@@ -1,8 +1,7 @@
-package devops
+package vcs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
@@ -10,34 +9,6 @@ import (
 	"github.com/rikotsev/easy-release/internal/config"
 	"github.com/rikotsev/easy-release/internal/util"
 )
-
-const (
-	targetBranchPrefix = "easy-release--"
-)
-
-var ErrNoRefsOnBaseBranch = errors.New("the base branch does not have any history")
-var ErrCannotCreateBranch = errors.New("cannot create a release branch")
-var ErrCannotCreatePullRequest = errors.New("cannot create PR")
-var ErrCannotUpdatePullRequest = errors.New("cannot update PR")
-
-type Api interface {
-	GetLastRef(ctx context.Context, branch string) (string, error)
-	UpdateRef(ctx context.Context, branch string, newSha string, oldSha string) (string, error)
-	PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []RemoteChange) error
-	GetPR(ctx context.Context, toBranch string, fromBranch string) (int, error)
-	CreatePR(ctx context.Context, toBranch string, fromBranch string, title string, description string) (int, error)
-	UpdatePR(ctx context.Context, prId int, title string, description string) (int, error)
-	GetLastCommitMessage(ctx context.Context, branch string) (string, string, error)
-	CreateAnnotatedTag(ctx context.Context, sha string, version string) error
-	GetPRTitle(ctx context.Context, prId int) (string, error)
-}
-
-const PullRequestDescriptionLimit = 4000
-
-type RemoteChange struct {
-	Path    string
-	Content string
-}
 
 type PayloadChange struct {
 	ChangeType string
@@ -54,21 +25,13 @@ type PayloadChangeContent struct {
 	ContentType string
 }
 
-type ApiOpts struct {
-	Token   string
-	Org     string
-	Project string
-	Repo    string
-	Branch  string
-}
-
-type apiImpl struct {
+type azureDevopsApiImpl struct {
 	cfg    *config.Config
 	opts   ApiOpts
 	client devopsgit.Client
 }
 
-func New(cfg *config.Config, opts ApiOpts) (Api, error) {
+func NewAzureDevops(cfg *config.Config, opts ApiOpts) (Api, error) {
 	ctx := context.Background()
 	organizationUrl := fmt.Sprintf("https://dev.azure.com/%s", opts.Org)
 	conn := azuredevops.NewPatConnection(organizationUrl, opts.Token)
@@ -78,14 +41,14 @@ func New(cfg *config.Config, opts ApiOpts) (Api, error) {
 		return nil, err
 	}
 
-	return &apiImpl{
+	return &azureDevopsApiImpl{
 		cfg:    cfg,
 		opts:   opts,
 		client: client,
 	}, nil
 }
 
-func (api *apiImpl) GetLastRef(ctx context.Context, branch string) (string, error) {
+func (api *azureDevopsApiImpl) GetLastRef(ctx context.Context, branch string) (string, error) {
 	resp, err := api.client.GetRefs(ctx, devopsgit.GetRefsArgs{
 		Top:          util.Int(1),
 		Filter:       util.String(fmt.Sprintf("heads/%s", branch)),
@@ -103,7 +66,7 @@ func (api *apiImpl) GetLastRef(ctx context.Context, branch string) (string, erro
 	return "", nil
 }
 
-func (api *apiImpl) UpdateRef(ctx context.Context, branch string, newSha string, oldSha string) (string, error) {
+func (api *azureDevopsApiImpl) UpdateRef(ctx context.Context, branch string, newSha string, oldSha string) (string, error) {
 	updateResp, err := api.client.UpdateRefs(ctx, devopsgit.UpdateRefsArgs{
 		RefUpdates: &[]devopsgit.GitRefUpdate{
 			{
@@ -126,7 +89,7 @@ func (api *apiImpl) UpdateRef(ctx context.Context, branch string, newSha string,
 	return newSha, nil
 }
 
-func (api *apiImpl) PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []RemoteChange) error {
+func (api *azureDevopsApiImpl) PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []RemoteChange) error {
 	payloadChanges := []interface{}{}
 
 	for _, chg := range changes {
@@ -167,7 +130,7 @@ func (api *apiImpl) PushCommit(ctx context.Context, branch string, lastSha strin
 	return nil
 }
 
-func (api *apiImpl) GetPR(ctx context.Context, toBranch string, fromBranch string) (int, error) {
+func (api *azureDevopsApiImpl) GetPR(ctx context.Context, toBranch string, fromBranch string) (int, error) {
 	resp, err := api.client.GetPullRequests(ctx, devopsgit.GetPullRequestsArgs{
 		Project:      &api.opts.Project,
 		RepositoryId: &api.opts.Repo,
@@ -188,7 +151,7 @@ func (api *apiImpl) GetPR(ctx context.Context, toBranch string, fromBranch strin
 	return -1, nil
 }
 
-func (api *apiImpl) CreatePR(ctx context.Context, toBranch string, fromBranch string, title string, description string) (int, error) {
+func (api *azureDevopsApiImpl) CreatePR(ctx context.Context, toBranch string, fromBranch string, title string, description string) (int, error) {
 	resp, err := api.client.CreatePullRequest(ctx, devopsgit.CreatePullRequestArgs{
 		Project:      &api.opts.Project,
 		RepositoryId: &api.opts.Repo,
@@ -210,7 +173,7 @@ func (api *apiImpl) CreatePR(ctx context.Context, toBranch string, fromBranch st
 	return -1, ErrCannotCreatePullRequest
 }
 
-func (api *apiImpl) UpdatePR(ctx context.Context, prId int, title string, description string) (int, error) {
+func (api *azureDevopsApiImpl) UpdatePR(ctx context.Context, prId int, title string, description string) (int, error) {
 	resp, err := api.client.UpdatePullRequest(ctx, devopsgit.UpdatePullRequestArgs{
 		Project:       &api.opts.Project,
 		RepositoryId:  &api.opts.Repo,
@@ -231,7 +194,7 @@ func (api *apiImpl) UpdatePR(ctx context.Context, prId int, title string, descri
 	return -1, ErrCannotUpdatePullRequest
 }
 
-func (api *apiImpl) GetLastCommitMessage(ctx context.Context, branch string) (string, string, error) {
+func (api *azureDevopsApiImpl) GetLastCommitMessage(ctx context.Context, branch string) (string, string, error) {
 	resp, err := api.client.GetCommits(ctx, devopsgit.GetCommitsArgs{
 		Project:      &api.opts.Project,
 		RepositoryId: &api.opts.Repo,
@@ -261,7 +224,7 @@ func (api *apiImpl) GetLastCommitMessage(ctx context.Context, branch string) (st
 	return sha, message, nil
 }
 
-func (api *apiImpl) CreateAnnotatedTag(ctx context.Context, sha string, version string) error {
+func (api *azureDevopsApiImpl) CreateAnnotatedTag(ctx context.Context, sha string, version string) error {
 	_, err := api.client.CreateAnnotatedTag(ctx, devopsgit.CreateAnnotatedTagArgs{
 		Project:      &api.opts.Project,
 		RepositoryId: &api.opts.Repo,
@@ -280,7 +243,7 @@ func (api *apiImpl) CreateAnnotatedTag(ctx context.Context, sha string, version 
 	return nil
 }
 
-func (api *apiImpl) GetPRTitle(ctx context.Context, prId int) (string, error) {
+func (api *azureDevopsApiImpl) GetPRTitle(ctx context.Context, prId int) (string, error) {
 	resp, err := api.client.GetPullRequestById(ctx, devopsgit.GetPullRequestByIdArgs{
 		PullRequestId: util.Int(prId),
 	})

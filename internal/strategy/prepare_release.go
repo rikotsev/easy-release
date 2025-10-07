@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/rikotsev/easy-release/internal/commits"
-	"github.com/rikotsev/easy-release/internal/devops"
 	"github.com/rikotsev/easy-release/internal/update"
+	"github.com/rikotsev/easy-release/internal/vcs"
 )
 
 type PrepareReleaseImpl struct {
@@ -19,7 +19,7 @@ type PrepareReleaseImpl struct {
 	extractedCommits []commits.Commit
 	nextVersion      string
 	newChangelog     string
-	remoteChanges    []devops.RemoteChange
+	remoteChanges    []vcs.RemoteChange
 	baseBranch       string
 	releaseBranch    string
 	releaseLastSha   string
@@ -29,7 +29,7 @@ func PrepareRelease(args *EasyReleaseArgs, applicationContext *EasyReleaseContex
 	return &PrepareReleaseImpl{
 		args:          args,
 		appCtx:        applicationContext,
-		remoteChanges: []devops.RemoteChange{},
+		remoteChanges: []vcs.RemoteChange{},
 		baseBranch:    args.Branch,
 		releaseBranch: fmt.Sprintf("%s%s", applicationContext.Cfg.ReleaseBranchPrefix, args.Branch),
 	}
@@ -101,7 +101,7 @@ func (strat *PrepareReleaseImpl) updateChangelog() error {
 	}
 
 	strat.newChangelog = string(chnglog)
-	strat.remoteChanges = append(strat.remoteChanges, devops.RemoteChange{
+	strat.remoteChanges = append(strat.remoteChanges, vcs.RemoteChange{
 		Path:    strat.appCtx.Cfg.ChangelogPath,
 		Content: string(append(chnglog[:], currentChangelog[:]...)),
 	})
@@ -115,7 +115,7 @@ func (strat *PrepareReleaseImpl) updatePathsWithNewVersion() error {
 		if err != nil {
 			return fmt.Errorf("failed to perform update for %s [%d] with %w", updCfg.FilePath, idx, err)
 		}
-		strat.remoteChanges = append(strat.remoteChanges, devops.RemoteChange{
+		strat.remoteChanges = append(strat.remoteChanges, vcs.RemoteChange{
 			Path:    updatedFile,
 			Content: string(newContent),
 		})
@@ -164,8 +164,8 @@ func (strat *PrepareReleaseImpl) makeOrUpdateThePR(ctx context.Context) error {
 	}
 	prContent := strat.newChangelog
 
-	if len(prContent) > devops.PullRequestDescriptionLimit {
-		prContent = prContent[:devops.PullRequestDescriptionLimit]
+	if len(prContent) > vcs.PullRequestDescriptionLimit {
+		prContent = prContent[:vcs.PullRequestDescriptionLimit]
 	}
 
 	if prId == -1 {

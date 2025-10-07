@@ -10,7 +10,7 @@ import (
 	"github.com/rikotsev/easy-release/internal/cli"
 	"github.com/rikotsev/easy-release/internal/commits"
 	"github.com/rikotsev/easy-release/internal/config"
-	"github.com/rikotsev/easy-release/internal/devops"
+	"github.com/rikotsev/easy-release/internal/vcs"
 	"github.com/rikotsev/easy-release/internal/version"
 )
 
@@ -33,7 +33,7 @@ type EasyReleaseContext struct {
 	VersionManager      *version.Manager
 	CommitParser        *commits.CommitParser
 	ChangelogBuilder    *changelog.ChangelogBuilder
-	Api                 devops.Api
+	Api                 vcs.Api
 }
 
 type EasyReleaseArgs struct {
@@ -98,8 +98,8 @@ func CreateEasyReleaseContext(args *EasyReleaseArgs) (*EasyReleaseContext, error
 		return nil, fmt.Errorf("could not instantiate changelog builder: %w", err)
 	}
 
-	result.Api, err = devops.New(result.Cfg,
-		devops.ApiOpts{
+	result.Api, err = vcs.NewAzureDevops(result.Cfg,
+		vcs.ApiOpts{
 			Token:   args.Token,
 			Org:     args.Org,
 			Project: args.Project,

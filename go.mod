@@ -1,10 +1,11 @@
 module github.com/rikotsev/easy-release
 
-go 1.23.1
+go 1.24.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/beevik/etree v1.4.1
+	github.com/google/go-github/v75 v75.0.0
 	github.com/google/uuid v1.1.1
 	github.com/microsoft/azure-devops-go-api/azuredevops/v7 v7.1.0
 	github.com/mikefarah/yq/v4 v4.44.3
@@ -21,6 +22,7 @@ require (
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/goccy/go-yaml v1.12.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

@@ -9,8 +9,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/rikotsev/easy-release/internal/config"
-	"github.com/rikotsev/easy-release/internal/devops"
 	"github.com/rikotsev/easy-release/internal/update"
+	"github.com/rikotsev/easy-release/internal/vcs"
 )
 
 type PerformReleaseImpl struct {
@@ -70,7 +70,7 @@ func (strat *PerformReleaseImpl) Execute(ctx context.Context) (StrategyResult, e
 func (strat *PerformReleaseImpl) optionallyMakeSnapshot(ctx context.Context) error {
 	snapshotVersion := fmt.Sprintf("%s-%s", strat.releasedVersion.IncPatch().String(), "SNAPSHOT")
 
-	changes := []devops.RemoteChange{}
+	changes := []vcs.RemoteChange{}
 	for idx, upd := range strat.appCtx.Cfg.Updates {
 		if upd.Kind == config.UpdateKindMaven {
 			filePath, content, err := update.Execute(snapshotVersion, upd)
@@ -78,7 +78,7 @@ func (strat *PerformReleaseImpl) optionallyMakeSnapshot(ctx context.Context) err
 				return fmt.Errorf("could not update file: %s [%d] with: %w", upd.FilePath, idx, err)
 			}
 
-			changes = append(changes, devops.RemoteChange{
+			changes = append(changes, vcs.RemoteChange{
 				Path:    filePath,
 				Content: string(content),
 			})

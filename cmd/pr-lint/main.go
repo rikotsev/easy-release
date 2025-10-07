@@ -9,8 +9,8 @@ import (
 
 	"github.com/rikotsev/easy-release/internal/commits"
 	"github.com/rikotsev/easy-release/internal/config"
-	"github.com/rikotsev/easy-release/internal/devops"
 	"github.com/rikotsev/easy-release/internal/strategy"
+	"github.com/rikotsev/easy-release/internal/vcs"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 	os.Exit(status)
 }
 
-func initServices(args *strategy.EasyReleaseArgs) (*commits.CommitLinter, devops.Api, error) {
+func initServices(args *strategy.EasyReleaseArgs) (*commits.CommitLinter, vcs.Api, error) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not load config with: %w", err)
@@ -60,7 +60,7 @@ func initServices(args *strategy.EasyReleaseArgs) (*commits.CommitLinter, devops
 		return nil, nil, fmt.Errorf("failed to initialize linter: %w", err)
 	}
 
-	api, err := devops.New(cfg, devops.ApiOpts{
+	api, err := vcs.NewAzureDevops(cfg, vcs.ApiOpts{
 		Token:   args.Token,
 		Org:     args.Org,
 		Project: args.Project,
