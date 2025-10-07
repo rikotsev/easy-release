@@ -3,10 +3,10 @@
 A couple of tools that should do - with few lines - the heavy lifting behind 
 releasing a version.
 
-`easy-release` - should be part of the build pipeline.
-`pr-lint` - should be part of the PR pipeline - preferably a first steps. Enforces 
+`easy-release` - should be part of the build pipeline. \
+`pr-lint` - should be part of the PR pipeline - preferably a first step.
 
-This is inspired mainly from [release-pelase](https://github.com/googleapis/release-please) and used extensively in Azure Devops (unforunately).
+This is inspired mainly from [release-please](https://github.com/googleapis/release-please) and used extensively in Azure Devops (unfortunately).
 
 ## Quick Start
 
@@ -86,62 +86,70 @@ If you decide to override a property - you can override only that property.
 
 ```json
 {
-    "gitCommand": "git",
-    "gitTagCommand": "tag",
-    "startingVersion": "1.0.0",
-    "extractCommitRegex": ".*\\b(\\w+)(?:\\(([^)]+)\\))?(!?)\\s*:\\s*(?:\\[(.*?)\\]\\s*)?(.+)$",
-    "linkPrefix": "http://example.com/",
-    "releaseCommitPrefix": "chore(release): ",
-    "snapshotCommitPrefix": "chore(snapshot): ",
-    "changelogPath": "CHANGELOG.md",
-    "releaseBranchPrefix": "easy-release--",
-    "changelogSections": [
-        {
-            "section": "Breaking Changes",
-            "hidden": false,
-            "increment": "MAJOR",
-            "includes": ["feat!", "fix!"]
-        },
-        {
-            "section": "Features",
-            "hidden": false,
-            "increment": "MINOR",
-            "includes": ["feat"]
-        },
-        {
-            "section": "Fixes",
-            "hidden": false,
-            "increment": "PATCH",
-            "includes": ["fix"]
-        }
+  "gitCommand": "git",
+  "gitTagCommand": "tag",
+  "startingVersion": "1.0.0",
+  "extractCommitRegex": ".*\\b(\\w+)(?:\\(([^)]+)\\))?(!?)\\s*:\\s*(?:\\[(.*?)\\]\\s*)?(.+)$",
+  "linkPrefix": "http://example.com/",
+  "releaseCommitPrefix": "chore(release): ",
+  "snapshotCommitPrefix": "chore(snapshot): ",
+  "changelogPath": "CHANGELOG.md",
+  "releaseBranchPrefix": "easy-release--",
+  "changelogSections": [
+    {
+      "section": "Breaking Changes",
+      "hidden": false,
+      "increment": "MAJOR",
+      "includes": [
+        "feat!",
+        "fix!"
+      ]
+    },
+    {
+      "section": "Features",
+      "hidden": false,
+      "increment": "MINOR",
+      "includes": [
+        "feat"
+      ]
+    },
+    {
+      "section": "Fixes",
+      "hidden": false,
+      "increment": "PATCH",
+      "includes": [
+        "fix"
+      ]
+    }
+  ],
+  "updates": [
+    {
+      "filePath": "pom.xml",
+      "kind": "MAVEN",
+      "pomPath": "//project/properties/revision"
+    }
+  ],
+  "prLint": {
+    "allowedType": [
+      "feat",
+      "feat!",
+      "fix",
+      "docs",
+      "style",
+      "refactor",
+      "perf",
+      "test",
+      "build",
+      "ci",
+      "chore",
+      "revert"
     ],
-    "updates": [
-        {
-            "filePath": "pom.xml",
-            "kind": "MAVEN",
-            "pomPath": "//project/properties/revision"
-        }
-    ],
-    "prLint": {
-        "allowedType": [
-            "feat",
-            "feat!",
-            "fix",
-            "docs",
-            "style",
-            "refactor",
-            "perf",
-            "test",
-            "build",
-            "ci",
-            "chore",
-            "revert"
-        ],
-        "typesRequiringJira": [
-            "feat",
-            "feat!",
-            "fix"
-        ]
+    "typesRequiringJira": [
+      "feat",
+      "feat!",
+      "fix"
+    ]
+  }
 }
 ```
 
