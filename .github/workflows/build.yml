@@ -1,0 +1,34 @@
+name: Easy Release - Build
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - name: Run make
+        run: |
+          go mod tidy
+          make
+      - name: Run easy-release
+        run: |
+          cp dist/easy-release/easy-release easy-release
+          chmod +x easy-release
+          ./easy-release -branch master -project rikotsev -repo easy-release -token $GH_TOKEN -vcs github
+        env:
+          GH_TOKEN: ${{ secrets.EASY_RELEASE_TOKEN }}
+      - name: Upload releases
+        run: |
+          if [[ -f ".easy-release-version.txt" ]]; then
+            VERSION=$(cat .easy-release-version.txt)
+            gh release upload $VERSION dist/easy-release/easy-release
+            gh release upload $VERSION dist/pr-lint/pr-lint
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.EASY_RELEASE_TOKEN }}
