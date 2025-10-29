@@ -27,8 +27,8 @@ jobs:
         run: |
           if [[ -f ".easy-release-version.txt" ]]; then
             VERSION=$(cat .easy-release-version.txt)
-            gh release upload $VERSION dist/easy-release/easy-release
-            gh release upload $VERSION dist/pr-lint/pr-lint
+            zip -j tools.zip dist
+            gh release create $VERSION tools.zip
           fi
         env:
           GH_TOKEN: ${{ secrets.EASY_RELEASE_TOKEN }}
