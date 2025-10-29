@@ -29,29 +29,44 @@ func NewGithub(cfg *config.Config, opts ApiOpts) (Api, error) {
 }
 
 func (g *githubApiImpl) GetLastRef(ctx context.Context, branch string) (string, error) {
-	ref, _, err := g.client.Git.GetRef(ctx, g.opts.Project, g.opts.Repo, "refs/heads/"+branch)
+	ref, response, err := g.client.Git.GetRef(ctx, g.opts.Project, g.opts.Repo, "refs/heads/"+branch)
+
+	if response != nil && response.StatusCode == 404 {
+		return "", nil
+	}
 
 	if err != nil {
 		return "", fmt.Errorf("failed to get last ref for branch: %s with err: %w", branch, err)
 	}
 
-	return ref.GetRef(), nil
+	return ref.GetObject().GetSHA(), nil
 }
 
 func (g *githubApiImpl) UpdateRef(ctx context.Context, branch string, newSha string, oldSha string) (string, error) {
-	ref, _, err := g.client.Git.UpdateRef(ctx, g.opts.Project, g.opts.Repo, branch, github.UpdateRef{
-		SHA:   newSha,
-		Force: util.Bool(true),
-	})
+	ghRef := "refs/heads/" + branch
+	_, response, err := g.client.Git.GetRef(ctx, g.opts.Project, g.opts.Repo, ghRef)
+
+	if response != nil && response.StatusCode == 404 {
+		_, _, err = g.client.Git.CreateRef(ctx, g.opts.Project, g.opts.Repo, github.CreateRef{
+			Ref: ghRef,
+			SHA: newSha,
+		})
+	} else {
+		_, _, err = g.client.Git.UpdateRef(ctx, g.opts.Project, g.opts.Repo, ghRef, github.UpdateRef{
+			SHA:   newSha,
+			Force: util.Bool(true),
+		})
+	}
 
 	if err != nil {
 		return "", fmt.Errorf("failed to update branch: %s to sha: %s with err: %w", branch, newSha, err)
 	}
 
-	return ref.GetRef(), nil
+	return newSha, nil
 }
 
 func (g *githubApiImpl) PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []RemoteChange) error {
+	ghRef := "refs/heads/" + branch
 	entries := make([]*github.TreeEntry, 0, len(changes))
 
 	for _, change := range changes {
@@ -69,17 +84,19 @@ func (g *githubApiImpl) PushCommit(ctx context.Context, branch string, lastSha s
 	}
 
 	commit, _, err := g.client.Git.CreateCommit(ctx, g.opts.Project, g.opts.Repo, github.Commit{
-		SHA:  util.String(lastSha),
-		Tree: tree,
-		Parents: []*github.Commit{{
-			SHA: util.Ptr(lastSha),
-		}},
+		Tree:    tree,
+		Message: util.Ptr(message),
+		Parents: []*github.Commit{
+			{
+				SHA: util.Ptr(lastSha),
+			},
+		},
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create github commit: %w", err)
 	}
 
-	_, _, err = g.client.Git.UpdateRef(ctx, g.opts.Project, g.opts.Repo, branch, github.UpdateRef{
+	_, _, err = g.client.Git.UpdateRef(ctx, g.opts.Project, g.opts.Repo, ghRef, github.UpdateRef{
 		SHA:   commit.GetSHA(),
 		Force: util.Bool(true),
 	})
@@ -92,8 +109,9 @@ func (g *githubApiImpl) PushCommit(ctx context.Context, branch string, lastSha s
 
 func (g *githubApiImpl) GetPR(ctx context.Context, toBranch string, fromBranch string) (int, error) {
 	list, _, err := g.client.PullRequests.List(ctx, g.opts.Project, g.opts.Repo, &github.PullRequestListOptions{
-		Head: fromBranch,
-		Base: toBranch,
+		State: "open",
+		Head:  "*:" + fromBranch,
+		Base:  toBranch,
 	})
 	if err != nil {
 		return -1, fmt.Errorf("failed to retrieve pull requests from branch: %s to branch: %s with err: %w", fromBranch, toBranch, err)
@@ -103,7 +121,7 @@ func (g *githubApiImpl) GetPR(ctx context.Context, toBranch string, fromBranch s
 		return -1, nil
 	}
 
-	return int(*list[0].ID), nil
+	return *list[0].Number, nil
 }
 
 func (g *githubApiImpl) CreatePR(ctx context.Context, toBranch string, fromBranch string, title string, description string) (int, error) {
@@ -141,7 +159,7 @@ func (g *githubApiImpl) GetLastCommitMessage(ctx context.Context, branch string)
 		return "", "", fmt.Errorf("failed to get last commit msg: %w", err)
 	}
 
-	return commit.GetCommit().GetSHA(), commit.GetCommit().GetMessage(), nil
+	return commit.GetSHA(), commit.GetCommit().GetMessage(), nil
 }
 
 func (g *githubApiImpl) CreateAnnotatedTag(ctx context.Context, sha string, version string) error {
@@ -162,6 +180,15 @@ func (g *githubApiImpl) CreateAnnotatedTag(ctx context.Context, sha string, vers
 
 	if err != nil {
 		return fmt.Errorf("cannot create tag %v in github: %w", version, err)
+	}
+
+	_, _, err = g.client.Git.CreateRef(ctx, g.opts.Project, g.opts.Repo, github.CreateRef{
+		Ref: "refs/tags/" + version,
+		SHA: sha,
+	})
+
+	if err != nil {
+		return fmt.Errorf("cannot create the ref: refs/tags/%v in github: %w", version, err)
 	}
 
 	return nil

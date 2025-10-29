@@ -130,7 +130,7 @@ func (strat *PrepareReleaseImpl) keepReleaseBranchUpToDate(ctx context.Context) 
 		return fmt.Errorf("could not get base branch: %s last sha with: %w", strat.baseBranch, err)
 	}
 	if baseLastSha == "" {
-		return fmt.Errorf("base branch: %s should have commits. something is terribly wrong!", strat.baseBranch)
+		return fmt.Errorf("base branch: %s should have commits. something is terribly wrong", strat.baseBranch)
 	}
 
 	releaseLastSha, err := strat.appCtx.Api.GetLastRef(ctx, strat.releaseBranch)
