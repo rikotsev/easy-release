@@ -201,5 +201,5 @@ func (g *githubApiImpl) GetPRTitle(ctx context.Context, prId int) (string, error
 		return "", fmt.Errorf("could not get PR with id: %d with error: %w", prId, err)
 	}
 
-	return *pullRequest.Title, nil
+	return pullRequest.GetTitle(), nil
 }
