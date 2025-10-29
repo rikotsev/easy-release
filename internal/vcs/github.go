@@ -3,6 +3,7 @@ package vcs
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/go-github/v75/github"
 	"github.com/rikotsev/easy-release/internal/config"
@@ -144,11 +145,34 @@ func (g *githubApiImpl) GetLastCommitMessage(ctx context.Context, branch string)
 }
 
 func (g *githubApiImpl) CreateAnnotatedTag(ctx context.Context, sha string, version string) error {
-	//TODO implement me
-	panic("implement me")
+	_, _, err := g.client.Git.CreateTag(ctx, g.opts.Project, g.opts.Repo, github.CreateTag{
+		Tag:     version,
+		Message: version,
+		Object:  sha,
+		Type:    "commit",
+		Tagger: &github.CommitAuthor{
+			Date: &github.Timestamp{
+				Time: time.Now(),
+			},
+			Name:  util.Ptr("easy-release"),
+			Email: util.Ptr("no-reply@easy-release.com"),
+			Login: util.Ptr("easy-release"),
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("cannot create tag %v in github: %w", version, err)
+	}
+
+	return nil
 }
 
 func (g *githubApiImpl) GetPRTitle(ctx context.Context, prId int) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	pullRequest, _, err := g.client.PullRequests.Get(ctx, g.opts.Project, g.opts.Repo, prId)
+
+	if err != nil {
+		return "", fmt.Errorf("could not get PR with id: %d with error: %w", prId, err)
+	}
+
+	return *pullRequest.Title, nil
 }
