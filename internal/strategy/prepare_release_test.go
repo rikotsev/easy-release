@@ -5,7 +5,7 @@ import (
 	"github.com/rikotsev/easy-release/internal/changelog"
 	"github.com/rikotsev/easy-release/internal/commits"
 	"github.com/rikotsev/easy-release/internal/config"
-	"github.com/rikotsev/easy-release/internal/devops"
+	"github.com/rikotsev/easy-release/internal/vcs"
 	"github.com/rikotsev/easy-release/internal/version"
 	"github.com/stretchr/testify/suite"
 	"os"
@@ -83,10 +83,10 @@ func (s *PrepareReleaseTestSuite) TestPullRequestDescriptionIsTruncated() {
 	res, err := strategy.Execute(s.ctx)
 	pullRequestDescriptionSize := len(s.api.updateDescriptions[0])
 
-	s.Require().True(devops.PullRequestDescriptionLimit < logsSize)
+	s.Require().True(vcs.PullRequestDescriptionLimit < logsSize)
 	s.Require().NoError(err)
 	s.Require().Equal(Done, res)
-	s.Require().True(pullRequestDescriptionSize <= devops.PullRequestDescriptionLimit,
+	s.Require().True(pullRequestDescriptionSize <= vcs.PullRequestDescriptionLimit,
 		"inputSize", logsSize, "outputSize", pullRequestDescriptionSize,
 		"description", s.api.updateDescriptions[0])
 }

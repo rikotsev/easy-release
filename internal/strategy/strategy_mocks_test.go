@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/rikotsev/easy-release/internal/devops"
+	"github.com/rikotsev/easy-release/internal/vcs"
 )
 
 var noMoreStubs = errors.New("no more stubs")
@@ -32,7 +32,7 @@ func (m *mockApi) UpdateRef(ctx context.Context, branch string, newSha string, o
 	return "", nil
 }
 
-func (m *mockApi) PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []devops.RemoteChange) error {
+func (m *mockApi) PushCommit(ctx context.Context, branch string, lastSha string, message string, changes []vcs.RemoteChange) error {
 	//do nothing
 	return nil
 }

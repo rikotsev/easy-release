@@ -11,3 +11,7 @@ func String(value string) *string {
 func Bool(value bool) *bool {
 	return &value
 }
+
+func Ptr[T interface{}](value T) *T {
+	return &value
+}

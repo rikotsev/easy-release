@@ -10,16 +10,21 @@ import (
 	"github.com/rikotsev/easy-release/internal/cli"
 	"github.com/rikotsev/easy-release/internal/commits"
 	"github.com/rikotsev/easy-release/internal/config"
-	"github.com/rikotsev/easy-release/internal/devops"
+	"github.com/rikotsev/easy-release/internal/vcs"
 	"github.com/rikotsev/easy-release/internal/version"
 )
 
-type StrategyResult string
+type (
+	StrategyResult string
+	VcsPlatform    string
+)
 
 const (
 	Done          StrategyResult = "Done"
 	Error         StrategyResult = "Error"
 	NotApplicable StrategyResult = "NotApplicable"
+	AzureDevops   VcsPlatform    = "azuredevops"
+	Github        VcsPlatform    = "github"
 )
 
 type Strategy interface {
@@ -33,10 +38,11 @@ type EasyReleaseContext struct {
 	VersionManager      *version.Manager
 	CommitParser        *commits.CommitParser
 	ChangelogBuilder    *changelog.ChangelogBuilder
-	Api                 devops.Api
+	Api                 vcs.Api
 }
 
 type EasyReleaseArgs struct {
+	Vcs     VcsPlatform
 	Token   string
 	Org     string
 	Project string
@@ -45,20 +51,22 @@ type EasyReleaseArgs struct {
 }
 
 func LoadEasyReleaseArgs() (*EasyReleaseArgs, error) {
+	vcsPlatform := flag.String("vcs", string(AzureDevops), "")
 	token := flag.String("token", "", "Access token to authenticate to the API")
-	org := flag.String("org", "", "The Azure DevOps Organization Identifier")
-	project := flag.String("project", "", "The Azure DevOps Project Identifier")
-	repo := flag.String("repo", "", "The Azure DevOps Repository Name")
+	org := flag.String("org", "", "Azure DevOps Organization Identifier / Empty for Github")
+	project := flag.String("project", "", "Azure DevOps Project Identifier / Github Owner")
+	repo := flag.String("repo", "", "The Repository Name")
 	branch := flag.String("branch", "", "The branch used for versioning")
 
 	flag.Parse()
 
-	if *token == "" || *org == "" || *project == "" || *repo == "" || *branch == "" {
+	if *token == "" || (*org == "" && *vcsPlatform == string(AzureDevops)) || *project == "" || *repo == "" || *branch == "" {
 		flag.PrintDefaults()
-		return nil, errors.New("all arguments are required!")
+		return nil, errors.New("all arguments are required")
 	}
 
 	return &EasyReleaseArgs{
+		Vcs:     VcsPlatform(*vcsPlatform),
 		Token:   *token,
 		Org:     *org,
 		Project: *project,
@@ -98,14 +106,27 @@ func CreateEasyReleaseContext(args *EasyReleaseArgs) (*EasyReleaseContext, error
 		return nil, fmt.Errorf("could not instantiate changelog builder: %w", err)
 	}
 
-	result.Api, err = devops.New(result.Cfg,
-		devops.ApiOpts{
-			Token:   args.Token,
-			Org:     args.Org,
-			Project: args.Project,
-			Repo:    args.Repo,
-			Branch:  args.Branch,
-		})
+	if args.Vcs == AzureDevops {
+		result.Api, err = vcs.NewAzureDevops(result.Cfg,
+			vcs.ApiOpts{
+				Token:   args.Token,
+				Org:     args.Org,
+				Project: args.Project,
+				Repo:    args.Repo,
+				Branch:  args.Branch,
+			})
+	} else if args.Vcs == Github {
+		result.Api, err = vcs.NewGithub(result.Cfg,
+			vcs.ApiOpts{
+				Token:   args.Token,
+				Project: args.Project,
+				Repo:    args.Repo,
+				Branch:  args.Branch,
+			})
+	} else {
+		return nil, fmt.Errorf("unrecognized vcs platform")
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("could not instantiate devops api client: %w", err)
 	}
