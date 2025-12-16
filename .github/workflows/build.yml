@@ -27,7 +27,7 @@ jobs:
         run: |
           if [[ -f ".easy-release-version.txt" ]]; then
             VERSION=$(cat .easy-release-version.txt)
-            zip -j tools.zip dist
+            zip -r -j tools.zip dist/*
             gh release create $VERSION tools.zip
           fi
         env:
