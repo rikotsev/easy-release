@@ -47,7 +47,7 @@ func (strat *PerformReleaseImpl) Execute(ctx context.Context) (StrategyResult, e
 	}
 
 	strat.releaseSha = sha
-	strat.releasedVersion, err = semver.StrictNewVersion(extractedCommits[0].Title)
+	strat.releasedVersion, err = extractSemVerFromTitle(extractedCommits[0].Title)
 	if err != nil {
 		return Error, fmt.Errorf("committed version - %s is not strict semver: %w", extractedCommits[0].Title, err)
 	}
@@ -97,4 +97,8 @@ func (strat *PerformReleaseImpl) optionallyMakeSnapshot(ctx context.Context) err
 
 func (strat *PerformReleaseImpl) touchVersion(version string) error {
 	return os.WriteFile(".easy-release-version.txt", []byte(version), 0644)
+}
+
+func extractSemVerFromTitle(input string) (*semver.Version, error) {
+	return semver.StrictNewVersion(strings.Split(strings.TrimSpace(input), " ")[0])
 }
